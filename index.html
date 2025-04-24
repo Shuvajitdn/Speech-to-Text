@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Speech to Text Converter</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #6e48aa, #9d50bb, #ff6b6b);
+            color: #fff;
+            transition: background 0.5s ease;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            max-width: 600px;
+            width: 90%;
+        }
+        h1 {
+            margin-bottom: 1.5rem;
+            font-weight: 600;
+            color: #fff;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        #output {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            min-height: 150px;
+            max-height: 300px;
+            overflow-y: auto;
+            text-align: left;
+            font-size: 1.1rem;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            color: #fff;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+        }
+        #interimOutput {
+            font-style: italic;
+            color: #ddd;
+        }
+        .controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        .btn {
+            background: #4CAF50;
+            border: none;
+            color: white;
+            padding: 12px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+            width: 60px;
+            height: 60px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .btn:hover {
+            opacity: 0.8;
+            transform: scale(1.05);
+            box-shadow: 0 6px 8px rgba(0,0,0,0.15);
+        }
+        #recordBtn {
+            background: #4CAF50;
+        }
+        #recordBtn.recording {
+            background: #f44336;
+            animation: pulse 1.5s infinite;
+        }
+        #copyBtn {
+            background: #2196F3;
+        }
+        #downloadBtn {
+            background: #FFC107;
+        }
+        #clearBtn {
+            background: #FF5722;
+        }
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(244, 67, 54, 0.7);
+            }
+            70% {
+                transform: scale(1.05);
+                box-shadow: 0 0 0 10px rgba(244, 67, 54, 0);
+            }
+            100% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(244, 67, 54, 0);
+            }
+        }
+        select {
+            padding: 10px;
+            border-radius: 5px;
+            border: none;
+            background: rgba(255, 255, 255, 0.2);
+            color: #fff;
+            font-size: 16px;
+            margin-right: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        select:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        select option {
+            background: #764ba2;
+            color: #fff;
+        }
+        .confidence {
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+            color: #fff;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+        }
+        .tooltip {
+            position: relative;
+            display: inline-block;
+        }
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 120px;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -60px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+        #editControls {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+        #editControls button {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        #editControls button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        #wordCount {
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+            color: #fff;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Speech to Text Converter</h1>
+        <div id="output" contenteditable="true"></div>
+        <div id="interimOutput"></div>
+        <div class="controls">
+            <select id="languageSelect">
+                <option value="en-US">English (US)</option>
+                <option value="es-ES">Spanish (Spain)</option>
+                <option value="fr-FR">French (France)</option>
+                <option value="de-DE">German (Germany)</option>
+                <option value="ja-JP">Japanese (Japan)</option>
+                <option value="bn-IN">Bengali (India)</option>
+                <option value="hi-IN">Hindi (India)</option>
+                <option value="zh-CN">Chinese (Simplified)</option>
+                <option value="ar-SA">Arabic (Saudi Arabia)</option>
+                <option value="ru-RU">Russian (Russia)</option>
+            </select>
+            <div class="tooltip">
+                <button id="recordBtn" class="btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line></svg>
+                </button>
+                <span class="tooltiptext">Start/Stop Recording</span>
+            </div>
+            <div class="tooltip">
+                <button id="copyBtn" class="btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                </button>
+                <span class="tooltiptext">Copy to Clipboard</span>
+            </div>
+            <div class="tooltip">
+                <button id="downloadBtn" class="btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                </button>
+                <span class="tooltiptext">Download Transcript</span>
+            </div>
+            <div class="tooltip">
+                <button id="clearBtn" class="btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                </button>
+                <span class="tooltiptext">Clear Transcript</span>
+            </div>
+        </div>
+        <div id="editControls">
+            <button id="undoBtn">Undo</button>
+            <button id="redoBtn">Redo</button>
+        </div>
+        <div class="confidence">Confidence: <span id="confidenceValue">0%</span></div>
+        <div id="wordCount">Words: 0 | Characters: 0</div>
+    </div>
+
+        <script>
+    const recordBtn = document.getElementById('recordBtn');
+    const copyBtn = document.getElementById('copyBtn');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const output = document.getElementById('output');
+    const interimOutput = document.getElementById('interimOutput');
+    const languageSelect = document.getElementById('languageSelect');
+    const confidenceValue = document.getElementById('confidenceValue');
+    const wordCount = document.getElementById('wordCount');
+    const undoBtn = document.getElementById('undoBtn');
+    const redoBtn = document.getElementById('redoBtn');
+
+    let recognition;
+    let isRecording = false;
+    let transcript = '';
+    let interimTranscript = '';
+    let confidenceSum = 0;
+    let confidenceCount = 0;
+
+    const history = [];
+    let historyIndex = -1;
+
+    function saveState() {
+        if (historyIndex < history.length - 1) {
+            history.splice(historyIndex + 1);
+        }
+        history.push(output.innerHTML);
+        historyIndex = history.length - 1;
+        updateUndoRedoButtons();
+    }
+
+    function undo() {
+        if (historyIndex > 0) {
+            historyIndex--;
+            output.innerHTML = history[historyIndex];
+            updateUndoRedoButtons();
+            updateWordCount();
+        }
+    }
+
+    function redo() {
+        if (historyIndex < history.length - 1) {
+            historyIndex++;
+            output.innerHTML = history[historyIndex];
+            updateUndoRedoButtons();
+            updateWordCount();
+        }
+    }
+
+    function updateUndoRedoButtons() {
+        undoBtn.disabled = historyIndex <= 0;
+        redoBtn.disabled = historyIndex >= history.length - 1;
+    }
+
+    undoBtn.addEventListener('click', undo);
+    redoBtn.addEventListener('click', redo);
+
+    output.addEventListener('input', () => {
+        saveState();
+        updateWordCount();
+    });
+
+    function updateWordCount() {
+        const text = output.textContent;
+        const words = text.trim().split(/\s+/).length;
+        const characters = text.length;
+        wordCount.textContent = `Words: ${words} | Characters: ${characters}`;
+    }
+
+    function initializeRecognition() {
+        recognition = new webkitSpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = languageSelect.value;
+
+        recognition.onresult = (event) => {
+            interimTranscript = '';
+            let finalTranscript = '';
+            let confidence = 0;
+
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                if (event.results[i].isFinal) {
+                    finalTranscript += event.results[i][0].transcript;
+                    confidence = event.results[i][0].confidence;
+                    confidenceSum += confidence;
+                    confidenceCount++;
+                } else {
+                    interimTranscript += event.results[i][0].transcript;
+                }
+            }
+
+            if (finalTranscript) {
+                output.textContent += finalTranscript + ' ';
+                saveState();
+                updateWordCount();
+            }
+            interimOutput.textContent = interimTranscript;
+            const averageConfidence = confidenceCount > 0 ? confidenceSum / confidenceCount : 0;
+            confidenceValue.textContent = `${(averageConfidence * 100).toFixed(2)}%`;
+        };
+
+        recognition.onerror = (event) => {
+            console.error('Speech recognition error', event.error);
+            stopRecording();
+        };
+
+        recognition.onend = () => {
+            if (isRecording) {
+                recognition.start(); // Restart recognition if it was recording
+            }
+        };
+    }
+
+    function startRecording() {
+        isRecording = true;
+        recordBtn.classList.add('recording');
+        confidenceSum = 0;
+        confidenceCount = 0;
+        recognition.start();
+    }
+
+    function stopRecording() {
+        isRecording = false;
+        recordBtn.classList.remove('recording');
+        recognition.stop();
+    }
+
+    recordBtn.addEventListener('click', () => {
+        if (isRecording) {
+            stopRecording();
+        } else {
+            startRecording();
+        }
+    });
+
+    copyBtn.addEventListener('click', () => {
+        navigator.clipboard.writeText(output.textContent).then(() => {
+            alert('Transcript copied to clipboard!');
+        });
+    });
+
+    downloadBtn.addEventListener('click', () => {
+        const element = document.createElement('a');
+        const file = new Blob([output.textContent], {type: 'text/plain'});
+        element.href = URL.createObjectURL(file);
+        element.download = 'speech-to-text-transcript.txt';
+        document.body.appendChild(element);
+        element.click();
+        document.body.removeChild(element);
+    });
+
+    clearBtn.addEventListener('click', () => {
+        output.textContent = '';
+        interimOutput.textContent = '';
+        confidenceValue.textContent = '0%';
+        confidenceSum = 0;
+        confidenceCount = 0;
+        saveState();
+        updateWordCount();
+    });
+
+    languageSelect.addEventListener('change', () => {
+        recognition.lang = languageSelect.value;
+        if (isRecording) {
+            stopRecording();
+            startRecording();
+        }
+    });
+
+    // Initialize the app
+    initializeRecognition();
+    saveState();
+    updateUndoRedoButtons();
+    updateWordCount();
+</script>
+</body>
+</html>
